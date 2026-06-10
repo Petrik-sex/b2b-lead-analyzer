@@ -1,13 +1,19 @@
 create extension if not exists "uuid-ossp";
 
-create type lead_status as enum (
-  'new',
-  'contacted',
-  'interested',
-  'not_interested',
-  'callback',
-  'closed'
-);
+do $$
+begin
+  create type lead_status as enum (
+    'new',
+    'contacted',
+    'interested',
+    'not_interested',
+    'callback',
+    'closed'
+  );
+exception
+  when duplicate_object then null;
+end
+$$;
 
 create table if not exists leads (
   id uuid primary key default uuid_generate_v4(),
@@ -42,6 +48,8 @@ create index if not exists leads_city_idx on leads (city);
 create index if not exists leads_industry_idx on leads (industry);
 create index if not exists leads_status_idx on leads (status);
 create index if not exists leads_ai_analysis_gin_idx on leads using gin (ai_analysis);
+
+alter table leads enable row level security;
 
 create or replace function set_updated_at()
 returns trigger as $$

@@ -34,6 +34,12 @@ export type WebAnalysis = {
   vr_tour_note: string;
   marketing_note: string;
   chatbot_note: string;
+  mobile_performance_score?: number | null;
+  performance_note?: string;
+  research_sources?: Array<{
+    label: string;
+    url: string;
+  }>;
   visible_problems: string[];
   summary: string;
 };

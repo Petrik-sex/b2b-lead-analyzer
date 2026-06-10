@@ -31,44 +31,34 @@ function sortLeads(leads: Lead[]) {
 }
 
 export async function listLeads() {
-  try {
-    const supabase = getSupabaseServerClient();
-    if (!supabase) {
-      return sortLeads(getMemoryLeads());
-    }
-
-    const { data, error } = await supabase.from(table).select("*").order("updated_at", { ascending: false });
-    if (error) {
-      throw error;
-    }
-
-    return sortLeads((data ?? []) as Lead[]);
-  } catch (error) {
-    console.error("Supabase list failed, using local demo data.", error);
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
     return sortLeads(getMemoryLeads());
   }
+
+  const { data, error } = await supabase.from(table).select("*").order("updated_at", { ascending: false });
+  if (error) {
+    throw new Error(`Supabase: leady sa nepodarilo načítať (${error.message}).`);
+  }
+
+  return sortLeads((data ?? []) as Lead[]);
 }
 
 export async function getLead(id: string) {
-  try {
-    const supabase = getSupabaseServerClient();
-    if (!supabase) {
-      return getMemoryLeads().find((lead) => lead.id === id) ?? null;
-    }
-
-    const { data, error } = await supabase.from(table).select("*").eq("id", id).single();
-    if (error) {
-      if (error.code === "PGRST116") {
-        return null;
-      }
-      throw error;
-    }
-
-    return data as Lead;
-  } catch (error) {
-    console.error("Supabase read failed, using local data.", error);
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
     return getMemoryLeads().find((lead) => lead.id === id) ?? null;
   }
+
+  const { data, error } = await supabase.from(table).select("*").eq("id", id).single();
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    throw new Error(`Supabase: lead sa nepodarilo načítať (${error.message}).`);
+  }
+
+  return data as Lead;
 }
 
 function createMemoryLead(input: LeadInput) {
@@ -86,22 +76,17 @@ function createMemoryLead(input: LeadInput) {
 }
 
 export async function createLead(input: LeadInput) {
-  try {
-    const supabase = getSupabaseServerClient();
-    if (!supabase) {
-      return createMemoryLead(input);
-    }
-
-    const { data, error } = await supabase.from(table).insert(input).select("*").single();
-    if (error) {
-      throw error;
-    }
-
-    return data as Lead;
-  } catch (error) {
-    console.error("Supabase insert failed, saving lead locally.", error);
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
     return createMemoryLead(input);
   }
+
+  const { data, error } = await supabase.from(table).insert(input).select("*").single();
+  if (error) {
+    throw new Error(`Supabase: lead sa nepodarilo uložiť (${error.message}).`);
+  }
+
+  return data as Lead;
 }
 
 function updateMemoryLead(id: string, patch: Partial<Lead>) {
@@ -117,22 +102,17 @@ function updateMemoryLead(id: string, patch: Partial<Lead>) {
 }
 
 export async function updateLead(id: string, patch: Partial<Lead>) {
-  try {
-    const supabase = getSupabaseServerClient();
-    if (!supabase) {
-      return updateMemoryLead(id, patch);
-    }
-
-    const { data, error } = await supabase.from(table).update(patch).eq("id", id).select("*").single();
-    if (error) {
-      throw error;
-    }
-
-    return data as Lead;
-  } catch (error) {
-    console.error("Supabase update failed, updating local data.", error);
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
     return updateMemoryLead(id, patch);
   }
+
+  const { data, error } = await supabase.from(table).update(patch).eq("id", id).select("*").single();
+  if (error) {
+    throw new Error(`Supabase: lead sa nepodarilo aktualizovať (${error.message}).`);
+  }
+
+  return data as Lead;
 }
 
 export async function updateLeadStatus(id: string, status: LeadStatus) {

@@ -27,10 +27,13 @@ export async function GET() {
     website_summary: lead.web_analysis?.summary,
     social_analysis: lead.web_analysis?.social_analysis,
     financial_report_note: lead.web_analysis?.financial_report_note,
+    mobile_performance_score: lead.web_analysis?.mobile_performance_score,
+    performance_note: lead.web_analysis?.performance_note,
     has_vr_tour: lead.web_analysis?.has_vr_tour,
     vr_tour_note: lead.web_analysis?.vr_tour_note,
     marketing_note: lead.web_analysis?.marketing_note,
     chatbot_note: lead.web_analysis?.chatbot_note,
+    research_sources: lead.web_analysis?.research_sources?.map((source) => `${source.label}: ${source.url}`).join(" | "),
     notes: lead.notes
   }));
   const csv = Papa.unparse(rows);

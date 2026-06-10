@@ -16,7 +16,7 @@ export async function POST(_: Request, { params }: Params) {
       return NextResponse.json({ error: "Lead sa nenašiel." }, { status: 404 });
     }
 
-    const webAnalysis = await analyzeWebsite(lead.website);
+    const webAnalysis = await analyzeWebsite(lead.website, lead.company_name);
     const aiAnalysis = await generateAiAnalysis(lead, webAnalysis);
     const detectedContact =
       (!lead.public_phone && webAnalysis.detected_public_phone) ||

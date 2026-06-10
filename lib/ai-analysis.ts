@@ -75,6 +75,8 @@ export async function generateAiAnalysis(lead: Lead, webAnalysis: WebAnalysis | 
 - VR poznámka: ${webAnalysis?.vr_tour_note ?? "neuvedené"}
 - marketing: ${webAnalysis?.marketing_note ?? "neuvedené"}
 - chatbot: ${webAnalysis?.chatbot_note ?? "neuvedené"}
+- mobilný výkon: ${webAnalysis?.performance_note ?? "neuvedené"}
+- overiteľné zdroje: ${(webAnalysis?.research_sources ?? []).map((source) => `${source.label}: ${source.url}`).join("; ") || "neuvedené"}
 - služby, ktoré vieme ponúknuť: webstránky, VR prehliadky, marketing, chatbot
 
 Vygeneruj JSON:

@@ -75,13 +75,65 @@ function baseAnalysis(overrides: Partial<WebAnalysis>): WebAnalysis {
     vr_tour_note: "VR prehliadka nebola rozpoznaná.",
     marketing_note: "Marketingové značky alebo kampane neboli rozpoznané.",
     chatbot_note: "Chatbot nebol rozpoznaný.",
+    mobile_performance_score: null,
+    performance_note: "Mobilný výkon nebol meraný.",
+    research_sources: [],
     visible_problems: [],
     summary: "",
     ...overrides
   };
 }
 
-export async function analyzeWebsite(url: string | null | undefined): Promise<WebAnalysis> {
+async function analyzePageSpeed(url: string) {
+  if (!process.env.PAGESPEED_API_KEY) {
+    return {
+      score: null,
+      note: "PageSpeed API nie je pripojené. Mobilná použiteľnosť sa posudzuje zo štruktúry webu."
+    };
+  }
+
+  try {
+    const endpoint = new URL("https://www.googleapis.com/pagespeedonline/v5/runPagespeed");
+    endpoint.searchParams.set("url", url);
+    endpoint.searchParams.set("strategy", "mobile");
+    endpoint.searchParams.set("category", "performance");
+    endpoint.searchParams.set("key", process.env.PAGESPEED_API_KEY);
+    const response = await fetch(endpoint, { signal: AbortSignal.timeout(20000) });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const result = (await response.json()) as {
+      lighthouseResult?: { categories?: { performance?: { score?: number } } };
+    };
+    const rawScore = result.lighthouseResult?.categories?.performance?.score;
+    const score = typeof rawScore === "number" ? Math.round(rawScore * 100) : null;
+
+    return {
+      score,
+      note: score === null ? "PageSpeed nevrátil mobilné skóre." : `Mobilný výkon podľa PageSpeed: ${score}/100.`
+    };
+  } catch {
+    return {
+      score: null,
+      note: "PageSpeed meranie sa nepodarilo dokončiť; ostatné signály analýzy zostali zachované."
+    };
+  }
+}
+
+function createResearchSources(url: string | null | undefined, socialUrl: string | null, companyName?: string) {
+  const sources: Array<{ label: string; url: string }> = [];
+  if (url && isPublicWebsite(url)) {
+    sources.push({ label: "Web firmy", url });
+  }
+  if (socialUrl && isPublicWebsite(socialUrl)) {
+    sources.push({ label: "Verejný sociálny profil", url: socialUrl });
+  }
+  sources.push({ label: companyName ? `Register účtovných závierok: ${companyName}` : "Register účtovných závierok", url: "https://www.registeruz.sk/" });
+  return sources;
+}
+
+export async function analyzeWebsite(url: string | null | undefined, companyName?: string): Promise<WebAnalysis> {
   if (!url) {
     return baseAnalysis({
       has_website: false,
@@ -96,6 +148,7 @@ export async function analyzeWebsite(url: string | null | undefined): Promise<We
       vr_tour_note: "Ak má firma fyzický priestor, VR prehliadka môže byť silná úvodná ponuka.",
       marketing_note: "Bez webu je najprv príležitosť vybudovať základnú merateľnú online prezentáciu.",
       chatbot_note: "Chatbot dáva zmysel až po existujúcom webe alebo jasnom rezervačnom procese.",
+      research_sources: createResearchSources(null, null, companyName),
       visible_problems: ["Firma nemá uložený web."],
       summary: "Bez webu je hlavná príležitosť vytvoriť základnú dôveryhodnú prezentáciu a merateľný kontakt."
     });
@@ -135,6 +188,7 @@ export async function analyzeWebsite(url: string | null | undefined): Promise<We
     );
     const scripts = (html.match(/<script/gi) ?? []).length;
     const modernFeel = hasViewport && scripts > 1 && html.length > 5000;
+    const pageSpeed = await analyzePageSpeed(url);
     const problems = [
       !clearCta ? "Na webe nie je jasne viditeľná výzva na kontakt alebo rezerváciu." : null,
       !hasViewport ? "Web nemusí byť dobre pripravený pre mobilné zariadenia." : null,
@@ -176,6 +230,9 @@ export async function analyzeWebsite(url: string | null | undefined): Promise<We
       chatbot_note: hasChatbot
         ? "Chat alebo chatbot je pravdepodobne nasadený, posúdiť kvalitu odpovedí a napojenie na rezervácie."
         : "Chatbot nebol rozpoznaný, môže pomôcť pri otázkach o cenách, rezerváciách alebo dostupnosti.",
+      mobile_performance_score: pageSpeed.score,
+      performance_note: pageSpeed.note,
+      research_sources: createResearchSources(url, detectedContacts.socialUrl, companyName),
       visible_problems: problems.length ? problems : ["Web pôsobí použiteľne, príležitosť je v zlepšení konverzie."],
       summary: problems.length
         ? "Automatická kontrola na pozadí prešla web, sociálne signály, VR, marketingové značky a chatbot potenciál."
@@ -195,6 +252,7 @@ export async function analyzeWebsite(url: string | null | undefined): Promise<We
       vr_tour_note: "VR prehliadku treba overiť manuálne.",
       marketing_note: "Marketingové značky sa nepodarilo skontrolovať.",
       chatbot_note: "Chatbot sa nepodarilo skontrolovať.",
+      research_sources: createResearchSources(url, null, companyName),
       visible_problems: ["Web sa nepodarilo načítať pri rýchlej kontrole."],
       summary: "Web je uložený, ale automatická kontrola ho nenačítala. Overiť manuálne pred kontaktovaním."
     });

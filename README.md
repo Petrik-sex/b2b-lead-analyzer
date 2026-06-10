@@ -10,7 +10,9 @@ Next.js + Tailwind CSS aplikácia na B2B lead research, web analýzu a prípravu
 - API endpointy pre leady, zmenu statusu, poznámky, analýzu a export.
 - Supabase/PostgreSQL schéma v `supabase/schema.sql`.
 - OpenAI analýza s bezpečným fallbackom, keď `OPENAI_API_KEY` nie je nastavený.
-- Automatická analýza na pozadí pre vybraný lead: web, sociálne siete, verejne overiteľný finančný report, VR prehliadka, marketing a chatbot potenciál.
+- Automatická analýza všetkých nových leadov na pozadí: web, sociálne siete, verejný finančný register, VR prehliadka, marketing a chatbot potenciál.
+- Voliteľné mobilné výkonnostné skóre cez PageSpeed Insights API.
+- Google Places vyhľadávanie verejných firemných profilov s ochranou proti duplicitám.
 - Demo režim bez Supabase, ktorý drží dáta v pamäti servera.
 
 ## Bezpečnostné pravidlá kontaktov
@@ -44,7 +46,13 @@ GOOGLE_PLACES_API_KEY=
 PAGESPEED_API_KEY=
 ```
 
-Bez Supabase/OpenAI kľúčov aplikácia beží v demo režime.
+`SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `GOOGLE_PLACES_API_KEY` a `PAGESPEED_API_KEY` sú serverové tajomstvá a nikdy nepatria do verejného repozitára.
+
+Bez Supabase aplikácia používa iba dočasné demo dáta. Ak je Supabase nakonfigurovaný a databáza zlyhá, aplikácia zobrazí chybu namiesto predstierania úspešného uloženia.
+
+Bez OpenAI sa vytvorí deterministická bezpečná analýza. Bez Google Places sa vytvorí iba research záznam s verejným Google Maps vyhľadávacím odkazom, nikdy nie vymyslený kontakt.
+
+Finančné čísla sa negenerujú ani neodhadujú. Aplikácia odkazuje na Register účtovných závierok; presný report treba spárovať podľa názvu a IČO firmy.
 
 ## CSV import
 

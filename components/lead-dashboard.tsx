@@ -160,6 +160,7 @@ export function LeadDashboard({ initialLeads }: Props) {
   const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
   const [note, setNote] = useState("");
   const [message, setMessage] = useState("");
+  const [analysisProgress, setAnalysisProgress] = useState({ done: 0, total: 0 });
   const [isPending, startTransition] = useTransition();
   const locationPickerRef = useRef<HTMLDivElement>(null);
   const businessPickerRef = useRef<HTMLDivElement>(null);
@@ -233,6 +234,49 @@ export function LeadDashboard({ initialLeads }: Props) {
     }
   }
 
+  async function analyzeLeadsInBackground(ids: string[]) {
+    const pendingIds = ids.filter((id) => !analyzedIds.current.has(id));
+    if (!pendingIds.length) {
+      return;
+    }
+
+    pendingIds.forEach((id) => analyzedIds.current.add(id));
+    setAnalysisProgress({ done: 0, total: pendingIds.length });
+    setMessage(`Analyzujem 0 z ${pendingIds.length} nových firiem na pozadí.`);
+    let cursor = 0;
+    let completed = 0;
+    let failed = 0;
+
+    async function worker() {
+      while (cursor < pendingIds.length) {
+        const id = pendingIds[cursor++];
+        try {
+          const response = await fetch(`/api/leads/${id}/analyze`, { method: "POST" });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error ?? "Analýza zlyhala.");
+          }
+          patchLead(data.lead);
+        } catch {
+          failed += 1;
+          analyzedIds.current.delete(id);
+        } finally {
+          completed += 1;
+          setAnalysisProgress({ done: completed, total: pendingIds.length });
+          setMessage(`Analyzujem ${completed} z ${pendingIds.length} nových firiem na pozadí.`);
+        }
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(2, pendingIds.length) }, () => worker()));
+    setAnalysisProgress({ done: pendingIds.length, total: pendingIds.length });
+    setMessage(
+      failed
+        ? `Analýza dokončená: ${pendingIds.length - failed} úspešných, ${failed} treba skúsiť znovu otvorením reportu.`
+        : `Hotovo. Analyzovaných firiem: ${pendingIds.length}.`
+    );
+  }
+
   function toggleLead(lead: Lead) {
     const opening = expandedId !== lead.id;
     setExpandedId(opening ? lead.id : "");
@@ -303,8 +347,9 @@ export function LeadDashboard({ initialLeads }: Props) {
       setMessage(
         data.mode === "demo"
           ? "Pridaný research záznam. Reálne firmy zapneme cez Google Places API."
-          : `Pridané firmy: ${data.leads?.length ?? 0}.`
+          : `Pridané firmy: ${data.leads?.length ?? 0}. Preskočené duplicity: ${data.skippedDuplicates ?? 0}.`
       );
+      void analyzeLeadsInBackground((data.leads ?? []).map((lead: Lead) => lead.id));
     });
   }
 
@@ -360,6 +405,7 @@ export function LeadDashboard({ initialLeads }: Props) {
       }
       await refreshLeads();
       setMessage(`Importované: ${data.imported}. Chyby: ${data.errors?.length ?? 0}.`);
+      void analyzeLeadsInBackground((data.leads ?? []).map((lead: Lead) => lead.id));
       event.target.value = "";
     });
   }
@@ -511,7 +557,11 @@ export function LeadDashboard({ initialLeads }: Props) {
 
         {message ? (
           <div className="flex items-center gap-2 border-l-2 border-mint bg-mint/5 px-3 py-2 text-sm text-slate-300">
-            {isPending ? <RefreshCw size={15} className="animate-spin text-mint" /> : <ShieldCheck size={15} className="text-mint" />}
+            {isPending || (analysisProgress.total > 0 && analysisProgress.done < analysisProgress.total) ? (
+              <RefreshCw size={15} className="animate-spin text-mint" />
+            ) : (
+              <ShieldCheck size={15} className="text-mint" />
+            )}
             {message}
           </div>
         ) : null}
@@ -699,6 +749,19 @@ export function LeadDashboard({ initialLeads }: Props) {
                               <p><span className="detail-label">VR</span>{lead.web_analysis.vr_tour_note}</p>
                               <p><span className="detail-label">Marketing</span>{lead.web_analysis.marketing_note}</p>
                               <p><span className="detail-label">Chatbot</span>{lead.web_analysis.chatbot_note}</p>
+                              <p><span className="detail-label">Mobilný výkon</span>{lead.web_analysis.performance_note ?? "PageSpeed meranie nebolo spustené."}</p>
+                              {lead.web_analysis.research_sources?.length ? (
+                                <div>
+                                  <span className="detail-label">Zdroje overenia</span>
+                                  <div className="flex flex-col gap-2">
+                                    {lead.web_analysis.research_sources.map((source) => (
+                                      <a key={`${source.label}-${source.url}`} href={source.url} target="_blank" rel="noreferrer" className="detail-link">
+                                        {source.label} <ExternalLink size={12} />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
                           </div>
 

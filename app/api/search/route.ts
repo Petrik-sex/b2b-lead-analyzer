@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createLead } from "@/lib/lead-store";
+import { createLead, listLeads } from "@/lib/lead-store";
 import { services } from "@/lib/types";
 import { leadSchema, normalizeLeadInput } from "@/lib/validation";
 
@@ -25,6 +25,10 @@ function cleanCity(location: string, formattedAddress: string | undefined) {
 
   const parts = formattedAddress.split(",").map((part) => part.trim()).filter(Boolean);
   return parts.find((part) => part.toLowerCase().includes(location.toLowerCase())) ?? location;
+}
+
+function normalizeIdentity(value: string | null | undefined) {
+  return value?.trim().toLocaleLowerCase("sk") ?? "";
 }
 
 export async function POST(request: Request) {
@@ -98,12 +102,30 @@ export async function POST(request: Request) {
 
     const result = (await response.json()) as { places?: GooglePlace[] };
     const places = result.places ?? [];
+    const existingLeads = await listLeads();
     const created = [];
     const errors = [];
+    let skippedDuplicates = 0;
 
     for (const [index, place] of places.entries()) {
       const companyName = place.displayName?.text?.trim();
       if (!companyName) {
+        continue;
+      }
+
+      const duplicate = existingLeads.some((existing) => {
+        const sameWebsite =
+          place.websiteUri &&
+          existing.website &&
+          normalizeIdentity(place.websiteUri).replace(/\/$/, "") === normalizeIdentity(existing.website).replace(/\/$/, "");
+        const sameMaps = place.googleMapsUri && existing.google_maps_url === place.googleMapsUri;
+        const sameNameAndCity =
+          normalizeIdentity(existing.company_name) === normalizeIdentity(companyName) &&
+          normalizeIdentity(existing.city).includes(normalizeIdentity(location));
+        return Boolean(sameWebsite || sameMaps || sameNameAndCity);
+      });
+      if (duplicate) {
+        skippedDuplicates += 1;
         continue;
       }
 
@@ -135,7 +157,7 @@ export async function POST(request: Request) {
       created.push(await createLead(normalizeLeadInput(lead.data)));
     }
 
-    return NextResponse.json({ leads: created, errors, mode: "google_places" });
+    return NextResponse.json({ leads: created, errors, skippedDuplicates, mode: "google_places" });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Vyhľadávanie firiem zlyhalo." },
