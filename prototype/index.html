@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>B2B Lead Analyzer Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #080a0f;
+        color: #eef3f8;
+      }
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at top left, rgba(98, 214, 163, 0.14), transparent 34rem),
+          linear-gradient(135deg, #080a0f 0%, #0f141d 48%, #141115 100%);
+      }
+      main {
+        max-width: 1220px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .panel {
+        border: 1px solid #232b38;
+        background: rgba(16, 20, 28, 0.82);
+        border-radius: 8px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 20px;
+      }
+      h1, h2, h3, p {
+        margin: 0;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      .muted {
+        color: #94a3b8;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .toolbar {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        padding: 16px;
+        margin-top: 16px;
+      }
+      input, select, button {
+        min-height: 40px;
+        border: 1px solid #232b38;
+        border-radius: 6px;
+        background: rgba(8, 10, 15, 0.75);
+        color: #eef3f8;
+        padding: 0 12px;
+      }
+      input::placeholder {
+        color: #64748b;
+      }
+      .business-picker {
+        position: relative;
+      }
+      .location-picker {
+        position: relative;
+      }
+      .business-picker input,
+      .location-picker input {
+        width: 100%;
+      }
+      .suggestions {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 46px;
+        z-index: 10;
+        overflow: hidden;
+        border: 1px solid #232b38;
+        border-radius: 6px;
+        background: #080a0f;
+        box-shadow: 0 18px 40px rgba(0,0,0,.34);
+      }
+      .business-picker.open .suggestions {
+        display: block;
+      }
+      .suggestions button {
+        display: block;
+        width: 100%;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        text-align: left;
+        color: #cbd5e1;
+      }
+      .suggestions button:hover {
+        background: rgba(98, 214, 163, 0.1);
+        color: #62d6a3;
+      }
+      .location-suggestions {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 46px;
+        z-index: 12;
+        max-height: 340px;
+        overflow: auto;
+        border: 1px solid #232b38;
+        border-radius: 6px;
+        background: #080a0f;
+        box-shadow: 0 18px 40px rgba(0,0,0,.34);
+      }
+      .location-picker.open .location-suggestions {
+        display: block;
+      }
+      .suggestion-group {
+        padding: 8px 0;
+      }
+      .suggestion-group + .suggestion-group {
+        border-top: 1px solid #232b38;
+      }
+      .suggestion-heading {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 10px 7px;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+      }
+      .suggestion-heading.primary {
+        color: #62d6a3;
+      }
+      .location-option {
+        display: grid;
+        width: 100%;
+        gap: 2px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        padding: 8px 10px;
+        text-align: left;
+      }
+      .location-option:hover {
+        background: rgba(98, 214, 163, 0.1);
+      }
+      .location-name {
+        color: #eef3f8;
+        font-size: 14px;
+      }
+      .location-meta {
+        color: #64748b;
+        font-size: 12px;
+      }
+      button, .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .primary {
+        background: #62d6a3;
+        color: #080a0f;
+        border-color: #62d6a3;
+        font-weight: 700;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th, td {
+        padding: 14px;
+        border-bottom: 1px solid #232b38;
+        text-align: left;
+      }
+      th {
+        color: #94a3b8;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid rgba(98, 214, 163, 0.45);
+        color: #62d6a3;
+        background: rgba(98, 214, 163, 0.1);
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+      aside {
+        padding: 18px;
+      }
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+      .box {
+        border: 1px solid #232b38;
+        background: rgba(8, 10, 15, 0.46);
+        border-radius: 8px;
+        padding: 14px;
+      }
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .metric {
+        background: rgba(255,255,255,0.05);
+        border-radius: 6px;
+        padding: 9px;
+        color: #cbd5e1;
+        font-size: 12px;
+      }
+      .reports {
+        display: grid;
+        gap: 12px;
+        margin-top: 20px;
+      }
+      .report-card {
+        overflow: hidden;
+        border: 1px solid #232b38;
+        border-radius: 8px;
+        background: rgba(16, 20, 28, 0.82);
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+      }
+      .report-summary {
+        display: grid;
+        grid-template-columns: 44px minmax(170px, 1.4fr) repeat(5, minmax(108px, 1fr));
+        gap: 12px;
+        align-items: center;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        padding: 14px;
+        text-align: left;
+      }
+      .report-summary:hover {
+        background: rgba(255,255,255,0.03);
+      }
+      .report-icon {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(98, 214, 163, 0.35);
+        border-radius: 8px;
+        background: rgba(98, 214, 163, 0.1);
+        color: #62d6a3;
+        font-weight: 800;
+      }
+      .report-field {
+        min-width: 0;
+      }
+      .field-label {
+        display: block;
+        margin-bottom: 4px;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+      }
+      .field-value {
+        display: block;
+        overflow: hidden;
+        color: #eef3f8;
+        font-size: 14px;
+        font-weight: 650;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .priority {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 7px;
+        background: rgba(243, 185, 95, 0.12);
+        color: #f3b95f;
+        font-weight: 800;
+      }
+      .priority-note {
+        margin-top: 5px;
+        color: #94a3b8;
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .status-select {
+        width: 100%;
+        min-width: 112px;
+      }
+      .contact-actions {
+        display: grid;
+        gap: 6px;
+      }
+      .call-now {
+        min-height: 32px;
+        border-color: rgba(98, 214, 163, 0.45);
+        background: rgba(98, 214, 163, 0.1);
+        color: #62d6a3;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .call-panel {
+        display: none;
+        margin: 0 14px 14px;
+        border: 1px solid rgba(98, 214, 163, 0.22);
+        border-radius: 8px;
+        background: rgba(98, 214, 163, 0.08);
+        padding: 12px;
+        color: #cbd5e1;
+        font-size: 13px;
+      }
+      .call-panel.open {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .tel-link {
+        min-height: 34px;
+        border-radius: 6px;
+        background: #62d6a3;
+        color: #080a0f;
+        padding: 8px 12px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .report-analysis {
+        display: none;
+        border-top: 1px solid #232b38;
+        padding: 16px;
+        background: rgba(8, 10, 15, 0.35);
+      }
+      .report-card.expanded .report-analysis {
+        display: grid;
+        gap: 14px;
+      }
+      .analysis-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .analysis-box {
+        border: 1px solid #232b38;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.04);
+        padding: 12px;
+      }
+      .analysis-box h3 {
+        margin-bottom: 6px;
+        color: #eef3f8;
+        font-size: 13px;
+      }
+      .analysis-box p {
+        color: #94a3b8;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .script-box {
+        border: 1px solid rgba(98, 214, 163, 0.25);
+        border-radius: 8px;
+        background: rgba(98, 214, 163, 0.09);
+        padding: 13px;
+        color: #62d6a3;
+        line-height: 1.5;
+      }
+      @media (max-width: 900px) {
+        .grid, .toolbar {
+          grid-template-columns: 1fr;
+        }
+        header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        table {
+          min-width: 760px;
+        }
+        .table-wrap {
+          overflow-x: auto;
+        }
+        .report-summary,
+        .analysis-grid {
+          grid-template-columns: 1fr;
+        }
+        .call-panel.open {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="panel">
+        <div>
+          <h1>B2B Lead Analyzer</h1>
+          <p class="muted">Dashboard pre B2B lead research, verejné kontakty a krátke AI sales poznámky.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+          <a class="button" href="#">Export CSV</a>
+          <button>Import CSV</button>
+        </div>
+      </header>
+
+      <section class="panel toolbar">
+        <div class="business-picker">
+          <input id="business-type" placeholder="vyberte názov biznisu" aria-label="Typ biznisu" />
+          <div class="suggestions">
+            <button type="button" data-business="všetky">všetky</button>
+            <button type="button" data-business="hotely">hotely</button>
+            <button type="button" data-business="reštaurácie">reštaurácie</button>
+            <button type="button" data-business="fitness centrá">fitness centrá</button>
+            <button type="button" data-business="showroomy">showroomy</button>
+            <button type="button" data-business="wellness centrá">wellness centrá</button>
+          </div>
+        </div>
+        <div class="location-picker">
+          <input id="location-input" placeholder="vyberte miesto" aria-label="Mesto alebo región" autocomplete="off" />
+          <div id="location-suggestions" class="location-suggestions" aria-label="Návrhy miest a obcí"></div>
+        </div>
+        <select aria-label="Služba">
+          <option value="" selected disabled>typ prevádzky</option>
+          <option>všetky</option>
+          <option>VR prehliadky</option>
+          <option>webstránky</option>
+          <option>marketing</option>
+          <option>chatbot</option>
+        </select>
+        <button class="primary">Find / create leads</button>
+      </section>
+
+      <section class="reports" aria-label="Reporty prevádzok">
+        <article class="report-card">
+          <button class="report-summary" type="button" data-expand-card>
+            <span class="report-icon">HD</span>
+            <span class="report-field">
+              <span class="field-label">Názov</span>
+              <span class="field-value">Hotel Danubia</span>
+            </span>
+            <span class="report-field">
+              <span class="field-label">Mesto</span>
+              <span class="field-value">Bratislava</span>
+            </span>
+            <span class="report-field">
+              <span class="field-label">Odvetvie</span>
+              <span class="field-value">hotely</span>
+            </span>
+            <span class="report-field">
+              <span class="field-label">Služba</span>
+              <span class="field-value">VR prehliadky</span>
+            </span>
+            <span class="report-field">
+              <span class="field-label">Priorita</span>
+              <span class="priority">8</span>
+              <span class="priority-note">Počítaná z kvality webu, CTA, fotiek, VR potenciálu, marketingu a chatbot potreby.</span>
+            </span>
+            <span class="report-field" data-stop-expand>
+              <span class="field-label">Status</span>
+              <select class="status-select" aria-label="Zmeniť status Hotel Danubia">
+                <option>new</option>
+                <option>contacted</option>
+                <option>interested</option>
+                <option>not_interested</option>
+                <option>callback</option>
+                <option>closed</option>
+              </select>
+            </span>
+            <span class="report-field contact-actions" data-stop-expand>
+              <span class="field-label">Kontakt</span>
+              <span class="field-value">recepcia@example.com</span>
+              <button class="call-now" type="button" data-call-toggle>hneď volať</button>
+            </span>
+          </button>
+          <div class="call-panel">
+            <span>Pre tento lead je uložený e-mail. Telefón pridaj iba z verejného zdroja alebo CSV, potom sa tu zobrazí priamy odkaz na volanie.</span>
+          </div>
+          <div class="report-analysis">
+            <div class="analysis-grid">
+              <div class="analysis-box"><h3>Web</h3><p>Web existuje, ale rezervácia a výzva na akciu nie sú dosť výrazné.</p></div>
+              <div class="analysis-box"><h3>Sociálne siete</h3><p>Instagram je vhodné porovnať s webom, najmä kvalitu fotiek priestorov.</p></div>
+              <div class="analysis-box"><h3>Finančný report</h3><p>Overiť iba z verejného registra alebo dodaných dát, negenerovať odhady.</p></div>
+              <div class="analysis-box"><h3>VR prehliadka</h3><p>VR prehliadka nebola rozpoznaná, fyzické priestory majú vysoký potenciál.</p></div>
+              <div class="analysis-box"><h3>Marketing</h3><p>Príležitosť je v lepšom meraní kampaní a jasnejšej rezervácii.</p></div>
+              <div class="analysis-box"><h3>Chatbot</h3><p>Vie odpovedať na otázky o izbách, eventoch, dostupnosti a rezerváciách.</p></div>
+            </div>
+            <div class="script-box">
+              Dobrý deň, volám sa Peter. Pozeral som si váš hotel a všimol som si, že priestory pôsobia zaujímavo, ale online sa nedajú veľmi zažiť. Robíme krátke VR prehliadky, ktoré pomáhajú hosťom lepšie sa rozhodnúť pred rezerváciou. Malo by zmysel, keby som vám poslal ukážku?
+            </div>
+          </div>
+        </article>
+
+        <article class="report-card">
+          <button class="report-summary" type="button" data-expand-card>
+            <span class="report-icon">FA</span>
+            <span class="report-field">
+              <span class="field-label">Názov</span>
+              <span class="field-value">FitLab Arena</span>
+            </span>
+            <span class="report-field">
+              <span class="field-label">Mesto</span>
+              <span class="field-value">Trnava</span>
+            </span>
+            <span class="report-field">
+              <span class="field-label">Odvetvie</span>
+              <span class="field-value">fitness centrá</span>
+            </span>
+            <span class="report-field">
+              <span class="field-label">Služba</span>
+              <span class="field-value">chatbot</span>
+            </span>
+            <span class="report-field">
+              <span class="field-label">Priorita</span>
+              <span class="priority">7</span>
+              <span class="priority-note">Vyššia potreba odpovedí na otázky, členstvá, rezervácie a konverzia záujemcov.</span>
+            </span>
+            <span class="report-field" data-stop-expand>
+              <span class="field-label">Status</span>
+              <select class="status-select" aria-label="Zmeniť status FitLab Arena">
+                <option>new</option>
+                <option>contacted</option>
+                <option>interested</option>
+                <option>not_interested</option>
+                <option selected>callback</option>
+                <option>closed</option>
+              </select>
+            </span>
+            <span class="report-field contact-actions" data-stop-expand>
+              <span class="field-label">Kontakt</span>
+              <span class="field-value">info@example.com</span>
+              <button class="call-now" type="button" data-call-toggle>hneď volať</button>
+            </span>
+          </button>
+          <div class="call-panel">
+            <span>Telefón nie je uložený. Po importe overeného verejného čísla bude dostupné priame volanie cez <strong>tel:</strong> odkaz.</span>
+          </div>
+          <div class="report-analysis">
+            <div class="analysis-grid">
+              <div class="analysis-box"><h3>Web</h3><p>Vizuál je silný, ale cenník a otázky o členstve sú málo dostupné.</p></div>
+              <div class="analysis-box"><h3>Sociálne siete</h3><p>Facebook môže niesť komunitu, odporúčané je merať preklik na skúšobný tréning.</p></div>
+              <div class="analysis-box"><h3>Finančný report</h3><p>Overiť len z verejného registra, nepoužívať vymyslené obraty alebo zisky.</p></div>
+              <div class="analysis-box"><h3>VR prehliadka</h3><p>Nie je hlavná potreba, väčšiu hodnotu má konverzná komunikácia.</p></div>
+              <div class="analysis-box"><h3>Marketing</h3><p>Odporúčané kampane na skúšobný vstup a remarketing pre nerozhodnutých návštevníkov.</p></div>
+              <div class="analysis-box"><h3>Chatbot</h3><p>Chatbot vie odľahčiť otázky o permanentkách, tréneroch a otváracích hodinách.</p></div>
+            </div>
+            <div class="script-box">
+              Dobrý deň, volám sa Peter. Pozeral som si vaše fitness centrum a vidno, že máte aktívnu komunitu. Záujemca však musí pri základných otázkach o členstve písať alebo volať. Robíme jednoduché chatboty, ktoré odpovedia hneď a nasmerujú ľudí na skúšobný tréning. Môžem vám poslať krátku ukážku?
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+    <script src="./municipalities.js"></script>
+    <script>
+      const businessInput = document.querySelector("#business-type");
+      const businessPicker = document.querySelector(".business-picker");
+      const locationInput = document.querySelector("#location-input");
+      const locationPicker = document.querySelector(".location-picker");
+      const locationSuggestions = document.querySelector("#location-suggestions");
+      const majorCities = [
+        { name: "Bratislava", type: "veľké mesto", district: "Bratislava", region: "Bratislavský kraj" },
+        { name: "Košice", type: "veľké mesto", district: "Košice", region: "Košický kraj" },
+        { name: "Prešov", type: "veľké mesto", district: "Prešov", region: "Prešovský kraj" },
+        { name: "Žilina", type: "veľké mesto", district: "Žilina", region: "Žilinský kraj" },
+        { name: "Nitra", type: "veľké mesto", district: "Nitra", region: "Nitriansky kraj" },
+        { name: "Banská Bystrica", type: "veľké mesto", district: "Banská Bystrica", region: "Banskobystrický kraj" },
+        { name: "Trnava", type: "veľké mesto", district: "Trnava", region: "Trnavský kraj" },
+        { name: "Trenčín", type: "veľké mesto", district: "Trenčín", region: "Trenčiansky kraj" },
+        { name: "Martin", type: "veľké mesto", district: "Martin", region: "Žilinský kraj" },
+        { name: "Poprad", type: "veľké mesto", district: "Poprad", region: "Prešovský kraj" }
+      ];
+
+      businessInput.addEventListener("click", () => {
+        businessPicker.classList.toggle("open");
+      });
+
+      document.querySelectorAll("[data-business]").forEach((button) => {
+        button.addEventListener("click", () => {
+          businessInput.value = button.dataset.business;
+          businessInput.setAttribute("value", button.dataset.business);
+          businessPicker.classList.remove("open");
+          businessPicker.classList.add("picked");
+          businessInput.focus();
+        });
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!businessPicker.contains(event.target)) {
+          businessPicker.classList.remove("open");
+        }
+        if (!locationPicker.contains(event.target)) {
+          locationPicker.classList.remove("open");
+        }
+      });
+
+      function normalizeText(value) {
+        return value
+          .toLocaleLowerCase("sk")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+      }
+
+      function renderLocationGroup(title, items, primary = false) {
+        if (!items.length) return "";
+
+        return `
+          <div class="suggestion-group">
+            <div class="suggestion-heading ${primary ? "primary" : ""}"><span>${title}</span><span>${items.length}</span></div>
+            ${items
+              .slice(0, 8)
+              .map(
+                (item) => `
+                  <button type="button" class="location-option" data-location="${item.name}">
+                    <span class="location-name">${item.name}</span>
+                    <span class="location-meta">${item.type} · okres ${item.district} · ${item.region}</span>
+                  </button>
+                `
+              )
+              .join("")}
+          </div>
+        `;
+      }
+
+      function updateLocationSuggestions() {
+        const query = normalizeText(locationInput.value.trim());
+        if (!query) {
+          locationPicker.classList.remove("open");
+          locationSuggestions.innerHTML = "";
+          return;
+        }
+
+        const normalizedMajorNames = new Set(majorCities.map((item) => normalizeText(item.name)));
+        const majorMatches = majorCities.filter((item) => normalizeText(item.name).startsWith(query));
+        const matches = (window.SLOVAK_MUNICIPALITIES || [])
+          .filter((item) => normalizeText(item.name).startsWith(query))
+          .sort((a, b) => a.name.localeCompare(b.name, "sk"));
+        const cityParts = matches.filter((item) => normalizeText(item.name).includes("mestska cast"));
+        const towns = matches.filter(
+          (item) =>
+            item.type === "mesto" &&
+            !normalizeText(item.name).includes("mestska cast") &&
+            !normalizedMajorNames.has(normalizeText(item.name))
+        );
+        const villages = matches.filter((item) => item.type === "obec");
+
+        locationSuggestions.innerHTML =
+          renderLocationGroup("Veľké mestá", majorMatches, true) +
+          renderLocationGroup("Mestské časti", cityParts) +
+          renderLocationGroup("Ostatné mestá", towns) +
+          renderLocationGroup("Dediny / obce", villages) ||
+          '<div class="suggestion-group"><div class="suggestion-heading"><span>Nenašli sa zhody</span></div></div>';
+
+        locationPicker.classList.add("open");
+      }
+
+      locationInput.addEventListener("input", updateLocationSuggestions);
+      locationInput.addEventListener("focus", updateLocationSuggestions);
+      locationSuggestions.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-location]");
+        if (!button) return;
+
+        locationInput.value = button.dataset.location;
+        locationInput.setAttribute("value", button.dataset.location);
+        locationPicker.classList.remove("open");
+      });
+
+      document.querySelectorAll("[data-expand-card]").forEach((summary) => {
+        summary.addEventListener("click", (event) => {
+          if (event.target.closest("[data-stop-expand]")) return;
+          summary.closest(".report-card").classList.toggle("expanded");
+        });
+      });
+
+      document.querySelectorAll("[data-stop-expand]").forEach((element) => {
+        element.addEventListener("click", (event) => event.stopPropagation());
+      });
+
+      document.querySelectorAll("[data-call-toggle]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const card = button.closest(".report-card");
+          card.querySelector(".call-panel").classList.toggle("open");
+        });
+      });
+    </script>
+  </body>
+</html>
